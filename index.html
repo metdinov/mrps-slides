@@ -4,13 +4,13 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<title>reveal.js</title>
+		<title>MRPS</title>
 
 		<link rel="stylesheet" href="css/reveal.css">
-		<link rel="stylesheet" href="css/theme/black.css">
+		<link rel="stylesheet" href="css/theme/solarized.css">
 
 		<!-- Theme used for syntax highlighting of code -->
-		<link rel="stylesheet" href="lib/css/zenburn.css">
+		<link rel="stylesheet" href="lib/css/solarized-dark.css">
 
 		<!-- Printing and PDF exports -->
 		<script>
@@ -24,8 +24,139 @@
 	<body>
 		<div class="reveal">
 			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
+				<section>
+                    <h1>Million Requests per Second</h1>
+                    <p><i>Load-testing erlang servers for fun <strike>and profit</strike></i></p>
+                </section>
+				<section>
+                    <h2>Project</h2>
+                    <ul>
+                        <li class="fragment fade-left">Two <span style="display: inline-block;" class="fragment fade-up">(or more)</span> clients, one server</li>
+                        <li class="fragment fade-left">Server echoes messages received from client</li>
+                        <li class="fragment fade-left">Boxes send metrics to monitoring system</li>
+                    </ul>
+                </section>
+                <section>
+                    <img src="diagram.png" alt="architecture">
+                </section>
+                <section>
+                    <section>
+                        <h2>Goals</h2>
+                        <img class="plain" src="img/automate-all-the-things.jpg" alt="automate" />
+                    </section>
+                    <section>
+                        <ul>
+                            <li class="fragment fade-left">One click create infrastructure</li>
+                            <li class="fragment fade-left">Dynamically create multiple clients</li>
+                            <li class="fragment fade-left">Provision server, clients and monitoring system</li>
+                        </ul>
+                    </section>
+                </section>
+                <section>
+                    <h2>Tools</h2>
+                </section>
+                <section>
+                    <section>
+                        <img class="plain" src="img/terraform.svg" alt="terraform" width="400px">
+                        <blockquote class="fragment fade-up" cite="https://www.terraform.io/intro/index.html#what-is-terraform-">
+                                Terraform is a tool for building, changing, and versioning infrastructure safely and efficiently. Terraform can manage existing and popular service providers as well as custom in-house solutions.</blockquote>
+                    </section>
+                    <section>
+                        <h3>Features</h3>
+                        <ul>
+                            <li>Infrastructure as Code</li>
+                            <li>Execution plans</li>
+                            <li>Resource graph</li>
+                            <li>Change automation through declarative syntax</li>
+                        </ul>
+                        <aside class="notes">
+                            Infrastructure is described using a high-level configuration syntax, can be shared and re-used. <br>
+                            Planning step shows what changes will be made before applying them. <br>
+                            Terraform builds a graph of all your resources, and parallelizes the creation and modification of any non-dependent resources.    
+                        </aside>
+                    </section>
+                    <section>
+                        <h3>Examples</h3>
+                        <pre class="fragment fade-up"><code class="hljs" data-trim contenteditable>
+resource "scaleway_server" "server" {
+    name        = "load-server"
+    image       = "31dfef82-9b45-4b01-9656-031617f36599"
+    type        = "C1"
+    depends_on  = ["scaleway_ssh_key.ssh_key"]
+}
+                        </code></pre>
+                    </section>
+                    <section>
+                        <pre><code class="hljs" data-trim contenteditable>
+resource "scaleway_server" "clients" {
+    count       = "${var.count}"
+    name        = "load-client-${count.index}"
+    image       = "31dfef82-9b45-4b01-9656-031617f36599"
+    type        = "C1"
+    depends_on  = ["scaleway_server.server"]
+}
+
+variable "count" {
+    default = 1
+}
+                        </code></pre>
+                    </section>
+                    <section>
+                        <h4>Output Variables</h4>
+                        <pre><code class="hljs" data-trim contenteditable>
+data "template_file" "ansible_inventory_tpl" {
+    template = "${file("inventory.tpl")}"
+}
+
+output "server_ip" {
+    value = "${scaleway_ip.server_ip.ip}"
+}
+  
+output "client_ips" {
+    value = "${formatlist("%v", scaleway_ip.client_ips.*.ip)}"
+}
+  
+output "monitor_ip" {
+    value = "${scaleway_ip.monitor_ip.ip}"
+}
+</code></pre>
+                    </section>
+                    <section>
+                            <script type="text/javascript" src="https://asciinema.org/a/14.js" id="asciicast-14" async data-autoplay="true" data-size="big"></script>
+                    </section>
+                </section>
+                <section>
+                    <section>
+                        <img class="plain" src="img/ansible.svg" alt="ansible">
+                        <blockquote class="fragment fade-up" cite="https://www.ansible.com/overview/how-ansible-works">
+                            Ansible is a radically simple IT automation engine that automates cloud provisioning, configuration management, application deployment, intra-service orchestration, and many other IT needs.</blockquote>
+                    </section>
+                    <section>
+                        <h3>Features</h3>
+                        <ul>
+                            <li>Written in Python + YAML</li>
+                            <li>Agentless (can optionally use <i>ansible-pull</i>)</li>
+                            <li>Imperative syntax, parallelizes provisioning across hosts</li>
+                            <li>Extensible through plugins, modules, roles</li>
+                        </ul>
+                        <aside class="notes">
+                            Agentless by default (vs agent-based Puppet, Chef) <br>    
+                            Executes plays/tasks in order, but runs in parallel on all hosts<br>
+                        </aside>
+                    </section>
+                    <section>
+                        <h3>Concepts</h3>
+                        <p>
+                            <span style="display: inline-block;" class="fragment fade-left">playbook  &#8680;  </span>
+                            <span style="display: inline-block;" class="fragment fade-left">play  &#8680;  </span>
+                            <span style="display: inline-block;" class="fragment fade-left">task  &#8680;  </span>
+                            <span style="display: inline-block;" class="fragment fade-left">module</span>
+                        </p>
+                    </section>
+                    <section>
+                        
+                    </section>
+                </section>
 			</div>
 		</div>
 
@@ -43,7 +174,7 @@
 					{ src: 'plugin/notes/notes.js', async: true },
 					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
 				]
-			});
+            });
 		</script>
 	</body>
 </html>
