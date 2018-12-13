@@ -12,6 +12,7 @@
 		<!-- Theme used for syntax highlighting of code -->
 		<link rel="stylesheet" href="lib/css/solarized-dark.css">
 
+        <link rel="stylesheet" href="css/asciinema-player.css"/>
 		<!-- Printing and PDF exports -->
 		<script>
 			var link = document.createElement( 'link' );
@@ -36,8 +37,7 @@
                         <li class="fragment fade-left">Boxes send metrics to monitoring system</li>
                     </ul>
                 </section>
-                <section>
-                    <img src="diagram.png" alt="architecture">
+                <section data-background="img/architechture.svg">
                 </section>
                 <section>
                     <section>
@@ -46,7 +46,7 @@
                     </section>
                     <section>
                         <ul>
-                            <li class="fragment fade-left">One click create infrastructure</li>
+                            <li class="fragment fade-left">One click infrastructure</li>
                             <li class="fragment fade-left">Dynamically create multiple clients</li>
                             <li class="fragment fade-left">Provision server, clients and monitoring system</li>
                         </ul>
@@ -122,7 +122,7 @@ output "monitor_ip" {
 </code></pre>
                     </section>
                     <section>
-                            <script type="text/javascript" src="https://asciinema.org/a/14.js" id="asciicast-14" async data-autoplay="true" data-size="big"></script>
+                            <asciinema-player class="stretch" speed="1.5" font-size="16" theme="solarized-dark" preload="true" src="demos/terraform.cast"></asciinema-player>
                     </section>
                 </section>
                 <section>
@@ -137,6 +137,7 @@ output "monitor_ip" {
                             <li>Written in Python + YAML</li>
                             <li>Agentless (can optionally use <i>ansible-pull</i>)</li>
                             <li>Imperative syntax, parallelizes provisioning across hosts</li>
+                            <li>Idempotent(ish)</li>
                             <li>Extensible through plugins, modules, roles</li>
                         </ul>
                         <aside class="notes">
@@ -146,28 +147,91 @@ output "monitor_ip" {
                     </section>
                     <section>
                         <h3>Concepts</h3>
-                        <p>
-                            <span style="display: inline-block;" class="fragment fade-left">playbook  &#8680;  </span>
-                            <span style="display: inline-block;" class="fragment fade-left">play  &#8680;  </span>
-                            <span style="display: inline-block;" class="fragment fade-left">task  &#8680;  </span>
-                            <span style="display: inline-block;" class="fragment fade-left">module</span>
-                        </p>
+                        <ul>
+                            <li class="fragment fade-left">Inventory</li>
+                            <li class="fragment fade-left">
+                                <span style="display: inline-block;" class="fragment fade-left">Playbook  &#8680;  </span>
+                                <span style="display: inline-block;" class="fragment fade-left">Play  &#8680;  </span>
+                                <span style="display: inline-block;" class="fragment fade-left">Task  &#8680;  </span>
+                                <span style="display: inline-block;" class="fragment fade-left">Module</span>
+                            </li>
+                            <li class="fragment fade-left">Handlers</li>
+                            <li class="fragment fade-left">Variables</li>
+                            <li class="fragment fade-left">Roles (Ansible Galaxy)</li>
+                        </ul>
                     </section>
                     <section>
-                        
+                        <h3>Examples</h3>
+                        <pre><code class="hljs yaml" data-trim contenteditable>
+---  
+- name: Install Tsung on clients
+  hosts: clients
+  remote_user: root
+  tasks:
+    - name: install tsung
+      apt: 
+        name: tsung
+        state: latest
+                        </code></pre>
+                    </section>
+                    <section>
+                        <pre><code class="hljs yaml" data-trim contenteditable>
+- name: Provision monitoring system
+  hosts: monitor
+  remote_user: root
+  roles:  
+    - role: grafana
+      grafana_security:
+        admin_user: "{{ grafana_admin_user }}"
+        admin_password: "{{ grafana_admin_passwd }}"
+      grafana_datasources:
+      - name: prometheus
+        type: prometheus
+        url: 'http://localhost:9090'
+      vars:
+        grafana_admin_user: admin
+        grafana_admin_passwd: password1
+                        </code></pre>                            
+                    </section>
+                    <section>
+                            <asciinema-player class="stretch" speed="1" theme="solarized-dark" preload="true" src="demos/ansible.cast"></asciinema-player>
+                    </section>
+                </section>
+                <section>
+                    <section>
+                        <h2>Preliminary tests</h2>
+                    </section>
+                    <section>
+                        <p>One client > 60k connections</p>
+                        <img class="plain" src="img/Screen Shot 2018-12-13 at 13.07.01.png" alt="over 9000!!1!!">
                     </section>
                 </section>
 			</div>
 		</div>
 
 		<script src="lib/js/head.min.js"></script>
-		<script src="js/reveal.js"></script>
+        <script src="js/reveal.js"></script>
 
 		<script>
 			// More info about config & dependencies:
 			// - https://github.com/hakimel/reveal.js#configuration
 			// - https://github.com/hakimel/reveal.js#dependencies
 			Reveal.initialize({
+                keyboard: {
+					86: function(event) {
+						var slide = Reveal.getCurrentSlide()
+						var player = slide.getElementsByTagName('asciinema-player')[0]
+						if(player) {
+							if(player.playing) {
+								player.pause()
+								player.playing = false
+							} else {
+								player.play()
+								player.playing = true
+							}
+						}
+					}
+				},
 				dependencies: [
 					{ src: 'plugin/markdown/marked.js' },
 					{ src: 'plugin/markdown/markdown.js' },
@@ -175,6 +239,7 @@ output "monitor_ip" {
 					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
 				]
             });
-		</script>
+        </script>
+        <script src="js/asciinema-player.js"></script>
 	</body>
 </html>
